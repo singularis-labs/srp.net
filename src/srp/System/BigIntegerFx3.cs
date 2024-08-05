@@ -2783,7 +2783,7 @@ namespace System.Numerics {
 				for (int j = m - 1; j >= 0; j--) {
 					rem *= Base;
 					rem += u[j];
-
+					
 					ulong div = rem / v0;
 					rem -= div * v0;
 					q[j] = (uint)div;

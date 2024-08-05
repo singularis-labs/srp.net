@@ -1,4 +1,5 @@
-﻿using System.Security;
+﻿using System;
+using System.Security;
 
 namespace SecureRemotePassword
 {
@@ -110,6 +111,87 @@ namespace SecureRemotePassword
 			// B = kv + g^b (b = random number)
 			var B = ComputeB(v, b);
 
+			// Log intermediate values
+			Console.WriteLine($"N: {N.ToHex()}");
+			Console.WriteLine($"g: {g.ToHex()}");
+			Console.WriteLine($"k: {k.ToHex()}");
+			Console.WriteLine($"H: {H}");
+			Console.WriteLine($"b: {b.ToHex()}");
+			Console.WriteLine($"A: {A.ToHex()}");
+			Console.WriteLine($"s: {s.ToHex()}");
+			Console.WriteLine($"I: {I}");
+			Console.WriteLine($"v: {v.ToHex()}");
+			Console.WriteLine($"B: {B.ToHex()}");
+
+			// A % N > 0
+			if (A % N == 0)
+			{
+				throw new SecurityException("The client sent an invalid public ephemeral");
+			}
+
+			// u = H(PAD(A), PAD(B))
+			var u = H(PAD(A), PAD(B));
+			Console.WriteLine($"u: {u.ToHex()}");
+
+			// S = (Av^u) ^ b (computes session key)
+			var S = ComputeS(A, b, u, v);
+			Console.WriteLine($"S: {S.ToHex()}");
+
+			// K = H(S)
+			var K = H(S);
+			Console.WriteLine($"K: {K.ToHex()}");
+
+			// M = H(H(N) xor H(g), H(I), s, A, B, K)
+			var M = H(H(N) ^ H(g), H(I), s, A, B, K);
+			Console.WriteLine($"M: {M.ToHex()}");
+
+			// validate client session proof
+			var expected = M;
+			var actual = SrpInteger.FromHex(clientSessionProof);
+			if (actual != expected)
+			{
+				throw new SecurityException("Client provided session proof is invalid");
+			}
+
+			// P = H(A, M, K)
+			var P = H(A, M, K);
+			Console.WriteLine($"P: {P.ToHex()}");
+
+			return new SrpSession
+			{
+				Key = K.ToHex(),
+				Proof = P.ToHex(),
+			};
+		}
+
+		/* public SrpSession DeriveSession(string serverSecretEphemeral, string clientPublicEphemeral, string salt, string username, string verifier, string clientSessionProof)
+		{
+			// N — A large safe prime (N = 2q+1, where q is prime)
+			// g — A generator modulo N
+			// k — Multiplier parameter (k = H(N, g) in SRP-6a, k = 3 for legacy SRP-6)
+			// H — One-way hash function
+			// PAD — Pad the number to have the same number of bytes as N
+			var N = Parameters.Prime;
+			var g = Parameters.Generator;
+			var k = Parameters.Multiplier;
+			var H = Parameters.Hash;
+			var PAD = Parameters.Pad;
+
+			// b — Secret ephemeral values
+			// A — Public ephemeral values
+			// s — User's salt
+			// p — Cleartext Password
+			// I — Username
+			// v — Password verifier
+			var b = SrpInteger.FromHex(serverSecretEphemeral);
+			var A = SrpInteger.FromHex(clientPublicEphemeral);
+			var s = SrpInteger.FromHex(salt);
+			var I = username + string.Empty;
+			var v = SrpInteger.FromHex(verifier);
+
+			// B = kv + g^b (b = random number)
+			var B = ComputeB(v, b);
+
 			// A % N > 0
 			if (A % N == 0)
 			{
@@ -146,6 +228,6 @@ namespace SecureRemotePassword
 				Key = K.ToHex(),
 				Proof = P.ToHex(),
 			};
-		}
+		} */
 	}
 }
